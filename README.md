@@ -36,7 +36,8 @@ jobs:
         uses: SOM-Research/comment-analyzer@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          server_url: 
+          server_url: '{server_url}'
+```
 
 ## How It Works
 - **Checkout Repository**: The action checks out the repository to get the latest code and context.

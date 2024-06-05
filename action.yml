@@ -102,7 +102,7 @@ runs:
         fi
 
     - name: Add positive comment
-      if: ${{ env.comment_to_delete }} == 'false' && ${{ env.neutral_comment }} != 'true'
+      if: env.comment_to_delete == 'false' && env.neutral_comment != 'true'
       shell: bash
       run: |
         COMMENT_BODY=$(jq -r '.response_comment' data/comment_analysis_result.json)
@@ -124,7 +124,7 @@ runs:
         fi
         
     - name: Delete comment
-      if: ${{ env.comment_to_delete }} == 'true'
+      if: env.comment_to_delete == 'true'
       shell: bash
       run: |
         if [[ "${{ github.event_name }}" == "issue_comment" ]]; then

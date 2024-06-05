@@ -76,67 +76,47 @@ runs:
         fi
         cat data/comment.json
 
-    - name: Send comment to local server for analysis
+    - name: Analyze and act on comment
       shell: bash
       run: |
         curl -X POST "${{ inputs.server_url }}" -H "Content-Type: application/json" \
              -d @data/comment.json \
              -o data/comment_analysis_result.json
+        cat data/comment_analysis_result.json
 
-    - name: Display result JSON
-      shell: bash
-      run: cat data/comment_analysis_result.json
+        classification=$(jq -r '.analysis.classification' data/comment_analysis_result.json)
+        echo "Classification: $classification"
 
-    - name: Set action based on flags
-      id: set-action
-      shell: bash
-      run: |
-        flags=$(jq -r '.analysis.numbered_flags | keys[]' data/comment_analysis_result.json)
-        echo "Flags: $flags"
-        if [ -z "$flags" ]; then
-          echo "neutral_comment=true" >> $GITHUB_ENV
-        elif echo "$flags" | grep -q -e 'F6' -e 'F7' -e 'F8' -e 'F9' -e 'F10' -e 'F11'; then
-          echo "comment_to_delete=true" >> $GITHUB_ENV
-        else
-          echo "comment_to_delete=false" >> $GITHUB_ENV
-        fi
-
-    - name: Add positive comment
-      if: env.comment_to_delete == 'false' && env.neutral_comment != 'true'
-      shell: bash
-      run: |
-        COMMENT_BODY=$(jq -r '.response_comment' data/comment_analysis_result.json)
-        if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
-          curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
-               -d '{"body":"'"$COMMENT_BODY"'"}'
-        elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
-          curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments \
-               -d '{"body":"'"$COMMENT_BODY"'"}'
-        elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
-          curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/${{ github.repository }}/discussions/${{ github.event.discussion.id }}/comments \
-               -d '{"body":"'"$COMMENT_BODY"'"}'
-        fi
-        
-    - name: Delete comment
-      if: env.comment_to_delete == 'true'
-      shell: bash
-      run: |
-        if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
-          curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}
-        elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
-          curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}
-        elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
-          curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
-               -H "Accept: application/vnd.github.v3+json" \
-               https://api.github.com/repos/${{ github.repository }}/discussions/comments/${{ github.event.comment.id }}
+        if [ "$classification" == "positive" ]; then
+          COMMENT_BODY=$(jq -r '.analysis.comment' data/comment_analysis_result.json)
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
+                 -H "Accept: application/vnd.github.v3+json" \
+                 https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+                 -d '{"body":"'"$COMMENT_BODY"'"}'
+          elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
+            curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
+                 -H "Accept: application/vnd.github.v3+json" \
+                 https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments \
+                 -d '{"body":"'"$COMMENT_BODY"'"}'
+          elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
+            curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
+                 -H "Accept: application/vnd.github.v3+json" \
+                 https://api.github.com/repos/${{ github.repository }}/discussions/${{ github.event.discussion.id }}/comments \
+                 -d '{"body":"'"$COMMENT_BODY"'"}'
+          fi
+        elif [ "$classification" == "negative" ]; then
+          if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+            curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
+                 -H "Accept: application/vnd.github.v3+json" \
+                 https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}
+          elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
+            curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
+                 -H "Accept: application/vnd.github.v3+json" \
+                 https://api.github.com/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}
+          elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
+            curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
+                 -H "Accept: application/vnd.github.v3+json" \
+                 https://api.github.com/repos/${{ github.repository }}/discussions/comments/${{ github.event.comment.id }}
+          fi
         fi

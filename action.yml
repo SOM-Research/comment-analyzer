@@ -1,0 +1,142 @@
+name: 'Comment analyzer'
+description: 'Analyze and handle comments in issues, pull requests, and discussions, and perform actions in the repository based on the analysis'
+author: 'CobosDS'
+inputs:
+  github_token:
+    description: 'GitHub token'
+    required: true
+  server_url:
+    description: 'URL of the analysis server'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+
+    - name: Create data directory
+      shell: bash
+      run: mkdir -p data
+
+    - name: Save comment details to JSON file
+      shell: bash
+      run: |
+        COMMENT_URL="${{ github.event.comment.html_url }}"
+        if echo "$COMMENT_URL" | grep -q "pull"; then
+          EVENT_TYPE="pull request"
+        elif echo "$COMMENT_URL" | grep -q "discussion"; then
+          EVENT_TYPE="discussion"
+        else
+          EVENT_TYPE="issue"
+        fi
+
+        if [[ "${{ github.event_name }}" == "issue_comment" || "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
+          jq -n --arg comment_id "${{ github.event.comment.id }}" \
+                --arg user "${{ github.event.comment.user.login }}" \
+                --arg user_id "${{ github.event.comment.user.id }}" \
+                --arg user_avatar_url "${{ github.event.comment.user.avatar_url }}" \
+                --arg user_html_url "${{ github.event.comment.user.html_url }}" \
+                --arg user_type "${{ github.event.comment.user.type }}" \
+                --arg event_type "$EVENT_TYPE" \
+                --arg event_number "${{ github.event.issue.number }}" \
+                --arg event_title "${{ github.event.issue.title }}" \
+                --arg event_body "${{ github.event.issue.body }}" \
+                --arg comment_body "${{ github.event.comment.body }}" \
+                --arg created_at "${{ github.event.comment.created_at }}" \
+                --arg updated_at "${{ github.event.comment.updated_at }}" \
+                --arg event_url "${{ github.event.issue.html_url }}" \
+                --arg comment_url "${{ github.event.comment.html_url }}" \
+                --arg repository_name "${{ github.repository }}" \
+                --arg repository_full_name "${{ github.repository.full_name }}" \
+                --arg repository_html_url "${{ github.repository.html_url }}" \
+                '{comment_id: $comment_id, user: $user, user_id: $user_id, user_avatar_url: $user_avatar_url, user_html_url: $user_html_url, user_type: $user_type, event_type: $event_type, event_number: $event_number, event_title: $event_title, event_body: $event_body, comment_body: $comment_body, created_at: $created_at, updated_at: $updated_at, event_url: $event_url, comment_url: $comment_url, repository_name: $repository_name, repository_full_name: $repository_full_name, repository_html_url: $repository_html_url}' > data/comment.json
+        elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
+          jq -n --arg comment_id "${{ github.event.comment.id }}" \
+                --arg user "${{ github.event.comment.user.login }}" \
+                --arg user_id "${{ github.event.comment.user.id }}" \
+                --arg user_avatar_url "${{ github.event.comment.user.avatar_url }}" \
+                --arg user_html_url "${{ github.event.comment.user.html_url }}" \
+                --arg user_type "${{ github.event.comment.user.type }}" \
+                --arg event_type "$EVENT_TYPE" \
+                --arg event_number "${{ github.event.discussion.number }}" \
+                --arg event_title "${{ github.event.discussion.title }}" \
+                --arg event_body "${{ github.event.discussion.body }}" \
+                --arg comment_body "${{ github.event.comment.body }}" \
+                --arg created_at "${{ github.event.comment.created_at }}" \
+                --arg updated_at "${{ github.event.comment.updated_at }}" \
+                --arg event_url "${{ github.event.discussion.html_url }}" \
+                --arg comment_url "${{ github.event.comment.html_url }}" \
+                --arg repository_name "${{ github.repository }}" \
+                --arg repository_full_name "${{ github.repository.full_name }}" \
+                --arg repository_html_url "${{ github.repository.html_url }}" \
+                '{comment_id: $comment_id, user: $user, user_id: $user_id, user_avatar_url: $user_avatar_url, user_html_url: $user_html_url, user_type: $user_type, event_type: $event_type, event_number: $event_number, event_title: $event_title, event_body: $event_body, comment_body: $comment_body, created_at: $created_at, updated_at: $updated_at, event_url: $event_url, comment_url: $comment_url, repository_name: $repository_name, repository_full_name: $repository_full_name, repository_html_url: $repository_html_url}' > data/comment.json
+        fi
+        cat data/comment.json
+
+    - name: Send comment to local server for analysis
+      shell: bash
+      run: |
+        curl -X POST "${{ inputs.server_url }}" -H "Content-Type: application/json" \
+             -d @data/comment.json \
+             -o data/comment_analysis_result.json
+
+    - name: Display result JSON
+      shell: bash
+      run: cat data/comment_analysis_result.json
+
+    - name: Set action based on flags
+      id: set-action
+      shell: bash
+      run: |
+        flags=$(jq -r '.analysis.numbered_flags | keys[]' data/comment_analysis_result.json)
+        echo "Flags: $flags"
+        if [ -z "$flags" ]; then
+          echo "neutral_comment=true" >> $GITHUB_ENV
+        elif echo "$flags" | grep -q -e 'F6' -e 'F7' -e 'F8' -e 'F9' -e 'F10' -e 'F11'; then
+          echo "comment_to_delete=true" >> $GITHUB_ENV
+        else
+          echo "comment_to_delete=false" >> $GITHUB_ENV
+        fi
+
+    - name: Add positive comment
+      if: ${{ env.comment_to_delete }} == 'false' && ${{ env.neutral_comment }} != 'true'
+      shell: bash
+      run: |
+        COMMENT_BODY=$(jq -r '.response_comment' data/comment_analysis_result.json)
+        if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+          curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/comments \
+               -d '{"body":"'"$COMMENT_BODY"'"}'
+        elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
+          curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments \
+               -d '{"body":"'"$COMMENT_BODY"'"}'
+        elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
+          curl -X POST -H "Authorization: token ${{ inputs.github_token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               https://api.github.com/repos/${{ github.repository }}/discussions/${{ github.event.discussion.id }}/comments \
+               -d '{"body":"'"$COMMENT_BODY"'"}'
+        fi
+        
+    - name: Delete comment
+      if: ${{ env.comment_to_delete }} == 'true'
+      shell: bash
+      run: |
+        if [[ "${{ github.event_name }}" == "issue_comment" ]]; then
+          curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               https://api.github.com/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}
+        elif [[ "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
+          curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               https://api.github.com/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}
+        elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
+          curl -X DELETE -H "Authorization: token ${{ inputs.github_token }}" \
+               -H "Accept: application/vnd.github.v3+json" \
+               https://api.github.com/repos/${{ github.repository }}/discussions/comments/${{ github.event.comment.id }}
+        fi

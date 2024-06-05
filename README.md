@@ -1,40 +1,71 @@
-# template
+# Analyze Comments GitHub Action
 
-This is a template for future repositories born in the SOM GitHub organization.
-It offers a collection of files and repository configuration for kick-starting a new project under the SOM GitHub organization.
+This GitHub Action analyzes comments in issues, pull requests, and discussions, and performs actions in the repository based on the analysis.
 
-This repository does not have activated the use of issues, projects o wikis. Only Pull Requests are allowed.
+## Features
 
-> If you have **any** question, contact [Javier Cánovas](https://github.com/jlcanovas) via the SOM Slack app.
+- Analyzes comments in issues, pull requests, and discussions.
+- Automatically handles comments by posting responses or deleting inappropriate comments.
+- Integrates with an external analysis server to determine the nature of the comment.
 
-## Steps to customize this repo for your project
+## Inputs
 
-1. Create a new repository in the SOM GitHub organization using this template. You have to set the `Repository template` field to `SOM-Research/template`.
+- `github_token` **(required)**: GitHub token for authentication.
+- `server_url` **(required)**: URL of the analysis server.
 
-    ![Repositoy Template](images/repositoryTemplate.png)
+## Usage
 
-2. Edit the project description. You can do it in the `About` tab of the repository (click on the gear icon). Try to create a descriptive entry for the project, and include at least three tags. If the project has a website, indicate also the URL.
+To use this action in your workflow, include it as a step in your GitHub Actions workflow file. Below is an example configuration:
 
-    ![Project Description](images/about.png)
+```yaml
+name: Check Comments
 
-3. In the preovious menu, decide also whether your repository page should include `Releases`, `Packages` or `Environments` tabs. In case of doubt, remove them
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  discussion_comment:
+    types: [created]
 
-4. Review the contributing guidelines in `CONTIBUTING.md`. Please, read carefully the provided template and adapt to your repository.
+jobs:
+  check-comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Analyze Comments
+        uses: SOM-Research/comment-analyzer@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          server_url: 
 
-5. Review the code of conduct in `CODE_OF_CONDUCT.md`. Please, read carefully the provided template and adapt to your repository.
+## How It Works
+- **Checkout Repository**: The action checks out the repository to get the latest code and context.
+- **Save Comment Details**: The action saves the details of the comment to a JSON file.
+- **Send for Analysis**: The comment details are sent to an external server for analysis.
+- **Determine Action**: Based on the analysis, the action determines if the comment should be deleted or responded to.
+- **Perform Action**: If required, the action will delete the comment or post a positive response.
 
-6. Review the governance model in `GOVERNANCE.md`. Please, read carefully the provided template and adapt to your repository.
+## Example Scenario
+- **Positive Comment**: The action will post a predefined positive response.
+- **Inappropriate Comment**: The action will delete the comment based on the analysis results.
 
-7. Check that the proposed license matches with your project. The template includes the CC-BY-SA license, but you can change it to any other license. You can find a list of licenses in [Choose a License](https://choosealicense.com/).
+## Permissions
+This action requires the following permissions:
 
-8. Decide whether your project will use issues, projects, and wikis. You can de/activate them in the `Settings` tab of the repository.
+- `contents: write`
+- `issues: write`
+- `pull-requests: write`
+- `discussions: write`
+- `actions: read`
 
-9. Review the templates proposed for issues and pull requests. You can find them in the `.github` folder. Remove the folder if you do not plan to use them. 
+Ensure these permissions are set in your workflow.
 
-    9.1. Issue templates are located in `.github/ISSUE_TEMPLATE`. You can find a template for proposals and questions, but you can modify or create new ones. You can find more information in [About issue and pull request templates](https://help.github.com/en/github/building-a-strong-community/about-issue-and-pull-request-templates). 
+## License
+This work is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.
 
-    9.2. Pull request template is located in `.github`. You can find more information in [About issue and pull request templates](https://help.github.com/en/github/building-a-strong-community/about-issue-and-pull-request-templates).
+The CC BY-SA license allows users to distribute, remix, adapt, and build upon the material in any medium or format, so long as attribution is given to the creator. The license allows for commercial use. If you remix, adapt, or build upon the material, you must license the modified material under identical terms.
 
-10. If your work is related to a paper, and you want to facilitate its citation, review the `CITATION.cff` file. The provided template will help to fill the gaps, but if you need more help, you can find more information in [Citation File Format](https://citation-file-format.github.io/). Otherwise, just remove the file.
+[Creative Commons License](https://creativecommons.org/licenses/by-sa/4.0/)
 
-11. Modify the `README.md` file. Once you have done the previous steps, write your the README file for your project. 
+## Author
+Created by CobosDS. For any issues or contributions, please open an issue or submit a pull request on the [GitHub repository](https://github.com/SOM-Research/comment-analyzer).

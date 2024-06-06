@@ -38,12 +38,22 @@ runs:
         sudo apt-get update
         sudo apt-get install -y jq
 
+    - name: Check if actor is bot user
+      id: check_actor
+      shell: bash
+      run: |
+        if [ "${{ github.actor }}" == "${{ inputs.bot_user }}" ]; then
+          echo "Actor is bot user, exiting..."
+          exit 0
+        fi
+
     - name: Create data directory
+      if: steps.check_actor.outputs.result != 'skipped'
       shell: bash
       run: mkdir -p data
 
     - name: Save comment details to JSON file
-      if: ${{ github.actor }} != ${{ inputs.bot_user }}
+      if: steps.check_actor.outputs.result != 'skipped'
       shell: bash
       run: |
         COMMENT_URL="${{ github.event.comment.html_url }}"
@@ -99,7 +109,7 @@ runs:
         cat data/comment.json
 
     - name: Analyze and act on comment
-      if: ${{ github.actor }} != ${{ inputs.bot_user }}
+      if: steps.check_actor.outputs.result != 'skipped'
       shell: bash
       run: |
         curl -X POST "${{ inputs.server_url }}" -H "Content-Type: application/json" \
@@ -145,7 +155,7 @@ runs:
         fi
 
     - name: Send email notification
-      if: ${{ github.actor }} != ${{ inputs.bot_user }}
+      if: steps.check_actor.outputs.result != 'skipped'
       shell: bash
       run: |
         classification=$(jq -r '.analysis.classification' data/comment_analysis_result.json)

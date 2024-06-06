@@ -39,6 +39,7 @@ runs:
         sudo apt-get install -y jq
 
     - name: Check if actor is bot user
+      shell: bash
       id: check_actor
       run: |
         if [ "${{ github.actor }}" == "${{ inputs.bot_user }}" ]; then

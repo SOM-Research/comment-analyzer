@@ -8,6 +8,18 @@ inputs:
   server_url:
     description: 'URL of the analysis server'
     required: true
+  sendinblue_api_key:
+    description: 'Sendinblue API key'
+    required: true
+  email_from:
+    description: 'Sender email address'
+    required: true
+  email_to:
+    description: 'Recipient email address'
+    required: true
+  bot_user:
+    description: 'Bot GitHub username'
+    required: true
 runs:
   using: 'composite'
   steps:
@@ -17,11 +29,18 @@ runs:
         persist-credentials: false
         fetch-depth: 0
 
+    - name: Install jq
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+
     - name: Create data directory
       shell: bash
       run: mkdir -p data
 
     - name: Save comment details to JSON file
+      if: ${{ env.GITHUB_ACTOR }} != ${{ inputs.bot_user }}
       shell: bash
       run: |
         COMMENT_URL="${{ github.event.comment.html_url }}"
@@ -77,6 +96,7 @@ runs:
         cat data/comment.json
 
     - name: Analyze and act on comment
+      if: ${{ env.GITHUB_ACTOR }} != ${{ inputs.bot_user }}
       shell: bash
       run: |
         curl -X POST "${{ inputs.server_url }}" -H "Content-Type: application/json" \
@@ -120,3 +140,29 @@ runs:
                  https://api.github.com/repos/${{ github.repository }}/discussions/comments/${{ github.event.comment.id }}
           fi
         fi
+
+    - name: Send email notification
+      if: ${{ env.GITHUB_ACTOR }} != ${{ inputs.bot_user }}
+      shell: bash
+      run: |
+        classification=$(jq -r '.analysis.classification' data/comment_analysis_result.json)
+        email_body=""
+
+        if [ "$classification" == "positive" ]; then
+          email_body="A positive action was taken. Details: $(cat data/comment.json)"
+        elif [ "$classification" == "negative" ]; then
+          email_body="A negative action was taken. Details: $(cat data/comment.json)"
+        fi
+
+        email_json=$(jq -n --arg from_name "GitHub Actions" \
+                          --arg from_email "${{ inputs.email_from }}" \
+                          --arg to_email "${{ inputs.email_to }}" \
+                          --arg subject "GitHub Actions Notification" \
+                          --arg htmlContent "<html><head></head><body><p>${email_body}</p></body></html>" \
+                          '{sender: {name: $from_name, email: $from_email}, to: [{email: $to_email, name: "Recipient"}], subject: $subject, htmlContent: $htmlContent}')
+
+        echo "$email_json" | curl -X POST "https://api.brevo.com/v3/smtp/email" \
+          -H "accept: application/json" \
+          -H "api-key: ${{ inputs.sendinblue_api_key }}" \
+          -H "Content-Type: application/json" \
+          -d @-

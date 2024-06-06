@@ -2,16 +2,27 @@
 
 This GitHub Action analyzes comments in issues, pull requests, and discussions, and performs actions in the repository based on the analysis.
 
-## Features
+## Analyze Comments GitHub Action
+
+This GitHub Action analyzes comments in issues, pull requests, and discussions, and performs actions in the repository based on the analysis.
+
+### Features
 
 - Analyzes comments in issues, pull requests, and discussions.
 - Automatically handles comments by posting responses or deleting inappropriate comments.
 - Integrates with an external analysis server to determine the nature of the comment.
+- Sends email notifications based on the analysis results.
+- Uses the `BigBOSS-SOM` bot to perform comment actions.
 
-## Inputs
+### Inputs
 
 - `github_token` **(required)**: GitHub token for authentication.
 - `server_url` **(required)**: URL of the analysis server.
+- `sendinblue_api_key` **(required)**: Sendinblue API key for sending email notifications.
+- `email_from` **(required)**: Sender email address for notifications.
+- `email_to` **(required)**: Recipient email address for notifications.
+- `bot_user` **(required)**: GitHub username of the bot.
+- `bot_token` **(required)**: GitHub token of the bot for performing comment actions.
 
 ## Usage
 
@@ -36,15 +47,22 @@ jobs:
         uses: SOM-Research/comment-analyzer@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          server_url: '{server_url}'
+          server_url: ${{ secrets.SERVER_URL }}
+          sendinblue_api_key: ${{ secrets.SENDINBLUE_API_KEY }}
+          email_from: ${{ secrets.EMAIL_FROM }}
+          email_to: ${{ secrets.EMAIL_TO }}
+          bot_user: ${{ secrets.BOT_USER }}
+          bot_token: ${{ secrets.BOT_TOKEN }}
 ```
 
-## How It Works
+### How It Works
 - **Checkout Repository**: The action checks out the repository to get the latest code and context.
 - **Save Comment Details**: The action saves the details of the comment to a JSON file.
 - **Send for Analysis**: The comment details are sent to an external server for analysis.
 - **Determine Action**: Based on the analysis, the action determines if the comment should be deleted or responded to.
-- **Perform Action**: If required, the action will delete the comment or post a positive response.
+- **Perform Action**: If required, the BigBOSS-SOM bot will delete the comment or post a positive response.
+- **Send Email Notification**: Sends an email notification with the analysis results.
+
 
 ## Example Scenario
 - **Positive Comment**: The action will post a predefined positive response.

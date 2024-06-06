@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Analyze Comments
-        uses: SOM-Research/comment-analyzer@v1
+        uses: SOM-Research/comment-analyzer@v1.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           server_url: ${{ secrets.SERVER_URL }}

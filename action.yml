@@ -134,9 +134,12 @@ runs:
                  https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments \
                  -d '{"body":"'"$COMMENT_BODY"'"}'
           elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
+            ORG=$(echo "${{ github.repository }}" | cut -d '/' -f 1)
+            TEAM_SLUG=$(echo "${{ github.repository }}" | cut -d '/' -f 2)
+            DISCUSSION_NUMBER=${{ github.event.discussion.number }}
             curl -X POST -H "Authorization: token ${{ inputs.bot_token }}" \
                  -H "Accept: application/vnd.github.v3+json" \
-                 https://api.github.com/repos/${{ github.repository }}/discussions/${{ github.event.discussion.id }}/comments \
+                 https://api.github.com/orgs/$ORG/teams/$TEAM_SLUG/discussions/$DISCUSSION_NUMBER/comments \
                  -d '{"body":"'"$COMMENT_BODY"'"}'
           fi
         elif [ "$classification" == "negative" ]; then
@@ -149,9 +152,13 @@ runs:
                  -H "Accept: application/vnd.github.v3+json" \
                  https://api.github.com/repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}
           elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
+            ORG=$(echo "${{ github.repository }}" | cut -d '/' -f 1)
+            TEAM_SLUG=$(echo "${{ github.repository }}" | cut -d '/' -f 2)
+            DISCUSSION_NUMBER=${{ github.event.discussion.number }}
+            COMMENT_ID=${{ github.event.comment.id }}
             curl -X DELETE -H "Authorization: token ${{ inputs.bot_token }}" \
                  -H "Accept: application/vnd.github.v3+json" \
-                 https://api.github.com/repos/${{ github.repository }}/discussions/comments/${{ github.event.comment.id }}
+                 https://api.github.com/orgs/$ORG/teams/$TEAM_SLUG/discussions/$DISCUSSION_NUMBER/comments/$COMMENT_ID
           fi
         fi
 

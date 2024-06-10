@@ -67,7 +67,8 @@ runs:
         fi
 
         if [[ "${{ github.event_name }}" == "issue_comment" || "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
-          jq -n --arg comment_id "${{ github.event.comment.id }}" \
+          jq -n --arg type "comment" \
+                --arg comment_id "${{ github.event.comment.id }}" \
                 --arg user "${{ github.event.comment.user.login }}" \
                 --arg user_id "${{ github.event.comment.user.id }}" \
                 --arg user_avatar_url "${{ github.event.comment.user.avatar_url }}" \
@@ -85,9 +86,10 @@ runs:
                 --arg repository_name "${{ github.repository }}" \
                 --arg repository_full_name "${{ github.repository.full_name }}" \
                 --arg repository_html_url "${{ github.repository.html_url }}" \
-                '{type: "comment", data: {comment_id: $comment_id, user: $user, user_id: $user_id, user_avatar_url: $user_avatar_url, user_html_url: $user_html_url, user_type: $user_type, event_type: $event_type, event_number: $event_number, event_title: $event_title, event_body: $event_body, comment_body: $comment_body, created_at: $created_at, updated_at: $updated_at, event_url: $event_url, comment_url: $comment_url, repository_name: $repository_name, repository_full_name: $repository_full_name, repository_html_url: $repository_html_url}}' > data/comment.json
+                '{type: $type, data: {comment_id: $comment_id, user: $user, user_id: $user_id, user_avatar_url: $user_avatar_url, user_html_url: $user_html_url, user_type: $user_type, event_type: $event_type, event_number: $event_number, event_title: $event_title, event_body: $event_body, comment_body: $comment_body, created_at: $created_at, updated_at: $updated_at, event_url: $event_url, comment_url: $comment_url, repository_name: $repository_name, repository_full_name: $repository_full_name, repository_html_url: $repository_html_url}}' > data/comment.json
         elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
-          jq -n --arg comment_id "${{ github.event.comment.id }}" \
+          jq -n --arg type "comment" \
+                --arg comment_id "${{ github.event.comment.id }}" \
                 --arg user "${{ github.event.comment.user.login }}" \
                 --arg user_id "${{ github.event.comment.user.id }}" \
                 --arg user_avatar_url "${{ github.event.comment.user.avatar_url }}" \
@@ -105,7 +107,7 @@ runs:
                 --arg repository_name "${{ github.repository }}" \
                 --arg repository_full_name "${{ github.repository.full_name }}" \
                 --arg repository_html_url "${{ github.repository.html_url }}" \
-                '{type: "comment", data: {comment_id: $comment_id, user: $user, user_id: $user_id, user_avatar_url: $user_avatar_url, user_html_url: $user_html_url, user_type: $user_type, event_type: $event_type, event_number: $event_number, event_title: $event_title, event_body: $event_body, comment_body: $comment_body, created_at: $created_at, updated_at: $updated_at, event_url: $event_url, comment_url: $comment_url, repository_name: $repository_name, repository_full_name: $repository_full_name, repository_html_url: $repository_html_url}}' > data/comment.json
+                '{type: $type, data: {comment_id: $comment_id, user: $user, user_id: $user_id, user_avatar_url: $user_avatar_url, user_html_url: $user_html_url, user_type: $user_type, event_type: $event_type, event_number: $event_number, event_title: $event_title, event_body: $event_body, comment_body: $comment_body, created_at: $created_at, updated_at: $updated_at, event_url: $event_url, comment_url: $comment_url, repository_name: $repository_name, repository_full_name: $repository_full_name, repository_html_url: $repository_html_url}}' > data/comment.json
         fi
         cat data/comment.json
 

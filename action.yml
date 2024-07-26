@@ -23,100 +23,21 @@ inputs:
   bot_token:
     description: 'Bot GitHub token'
     required: true
+  comment_json:
+    description: 'Path to comment JSON file'
+    required: true
+  flags:
+    description: 'Flags from the analysis'
+    required: true
+
 runs:
   using: 'composite'
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        persist-credentials: false
-        fetch-depth: 0
-
-    - name: Install jq
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y jq
-
-    - name: Check if actor is bot user
-      shell: bash
-      id: check_actor
-      run: |
-        if [ "${{ github.actor }}" == "${{ inputs.bot_user }}" ]; then
-          echo "actor_is_bot=true" >> $GITHUB_ENV
-        else
-          echo "actor_is_bot=false" >> $GITHUB_ENV
-        fi
-
-    - name: Create data directory
-      if: env.actor_is_bot != 'true'
-      shell: bash
-      run: mkdir -p data
-
-    - name: Save comment details to JSON file
-      if: env.actor_is_bot != 'true'
-      shell: bash
-      run: |
-        COMMENT_URL="${{ github.event.comment.html_url }}"
-        if echo "$COMMENT_URL" | grep -q "pull"; then
-          EVENT_TYPE="pull request"
-        elif echo "$COMMENT_URL" | grep -q "discussion"; then
-          EVENT_TYPE="discussion"
-        else
-          EVENT_TYPE="issue"
-        fi
-
-        if [[ "${{ github.event_name }}" == "issue_comment" || "${{ github.event_name }}" == "pull_request_review_comment" ]]; then
-          jq -n --arg type "comment" \
-                --arg comment_id "${{ github.event.comment.id }}" \
-                --arg user "${{ github.event.comment.user.login }}" \
-                --arg user_id "${{ github.event.comment.user.id }}" \
-                --arg user_avatar_url "${{ github.event.comment.user.avatar_url }}" \
-                --arg user_html_url "${{ github.event.comment.user.html_url }}" \
-                --arg user_type "${{ github.event.comment.user.type }}" \
-                --arg event_type "$EVENT_TYPE" \
-                --arg event_number "${{ github.event.issue.number }}" \
-                --arg event_title "${{ github.event.issue.title }}" \
-                --arg event_body "${{ github.event.issue.body }}" \
-                --arg comment_body "${{ github.event.comment.body }}" \
-                --arg created_at "${{ github.event.comment.created_at }}" \
-                --arg updated_at "${{ github.event.comment.updated_at }}" \
-                --arg event_url "${{ github.event.issue.html_url }}" \
-                --arg comment_url "${{ github.event.comment.html_url }}" \
-                --arg repository_name "${{ github.repository }}" \
-                --arg repository_full_name "${{ github.repository.full_name }}" \
-                --arg repository_html_url "${{ github.repository.html_url }}" \
-                '{type: $type, data: {comment_id: $comment_id, user: $user, user_id: $user_id, user_avatar_url: $user_avatar_url, user_html_url: $user_html_url, user_type: $user_type, event_type: $event_type, event_number: $event_number, event_title: $event_title, event_body: $event_body, comment_body: $comment_body, created_at: $created_at, updated_at: $updated_at, event_url: $event_url, comment_url: $comment_url, repository_name: $repository_name, repository_full_name: $repository_full_name, repository_html_url: $repository_html_url}}' > data/comment.json
-        elif [[ "${{ github.event_name }}" == "discussion_comment" ]]; then
-          jq -n --arg type "comment" \
-                --arg comment_id "${{ github.event.comment.id }}" \
-                --arg user "${{ github.event.comment.user.login }}" \
-                --arg user_id "${{ github.event.comment.user.id }}" \
-                --arg user_avatar_url "${{ github.event.comment.user.avatar_url }}" \
-                --arg user_html_url "${{ github.event.comment.user.html_url }}" \
-                --arg user_type "${{ github.event.comment.user.type }}" \
-                --arg event_type "$EVENT_TYPE" \
-                --arg event_number "${{ github.event.discussion.number }}" \
-                --arg event_title "${{ github.event.discussion.title }}" \
-                --arg event_body "${{ github.event.discussion.body }}" \
-                --arg comment_body "${{ github.event.comment.body }}" \
-                --arg created_at "${{ github.event.comment.created_at }}" \
-                --arg updated_at "${{ github.event.comment.updated_at }}" \
-                --arg event_url "${{ github.event.discussion.html_url }}" \
-                --arg comment_url "${{ github.event.comment.html_url }}" \
-                --arg repository_name "${{ github.repository }}" \
-                --arg repository_full_name "${{ github.repository.full_name }}" \
-                --arg repository_html_url "${{ github.repository.html_url }}" \
-                '{type: $type, data: {comment_id: $comment_id, user: $user, user_id: $user_id, user_avatar_url: $user_avatar_url, user_html_url: $user_html_url, user_type: $user_type, event_type: $event_type, event_number: $event_number, event_title: $event_title, event_body: $event_body, comment_body: $comment_body, created_at: $created_at, updated_at: $updated_at, event_url: $event_url, comment_url: $comment_url, repository_name: $repository_name, repository_full_name: $repository_full_name, repository_html_url: $repository_html_url}}' > data/comment.json
-        fi
-        cat data/comment.json
-
     - name: Analyze and act on comment
-      if: env.actor_is_bot != 'true'
       shell: bash
       run: |
         curl -X POST "${{ inputs.server_url }}" -H "Content-Type: application/json" \
-             -d @data/comment.json \
+             -d @${{ inputs.comment_json }} \
              -o data/comment_analysis_result.json
         cat data/comment_analysis_result.json
 
@@ -158,16 +79,15 @@ runs:
         fi
 
     - name: Send email notification
-      if: env.actor_is_bot != 'true'
       shell: bash
       run: |
         classification=$(jq -r '.analysis.classification' data/comment_analysis_result.json)
         email_body=""
 
         if [ "$classification" == "positive" ]; then
-          email_body="A positive action was taken. Details: $(cat data/comment.json)"
+          email_body="A positive action was taken. Details: $(cat ${{ inputs.comment_json }})"
         elif [ "$classification" == "negative" ]; then
-          email_body="A negative action was taken. Details: $(cat data/comment.json)"
+          email_body="A negative action was taken. Details: $(cat ${{ inputs.comment_json }})"
         fi
 
         email_json=$(jq -n --arg from_name "GitHub Actions" \

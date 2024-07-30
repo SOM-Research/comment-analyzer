@@ -49,8 +49,9 @@ runs:
         comment_id=$(echo $comment_data | jq -r '.data.comment_id')
         repository_name=$(echo $comment_data | jq -r '.data.repository_name')
         bot_token="${{ inputs.bot_token }}"
-        flags="${{ inputs.flags }}"
-        numbered_flags=$(jq -r '.analysis.numbered_flags' data/comment_analysis_result.json | jq 'keys')
+
+        flags=$(echo '${{ inputs.flags }}' | jq 'keys')
+        numbered_flags=$(jq -r '.analysis.numbered_flags | keys' data/comment_analysis_result.json)
 
         echo "Classification: $classification"
         echo "Flags: $flags"
@@ -58,8 +59,8 @@ runs:
 
         # Verify if numbered flags match the input flags
         valid=true
-        for flag in $(echo $flags | jq -r 'keys[]'); do
-          if ! echo $numbered_flags | jq -e 'contains([$flag])' > /dev/null; then
+        for flag in $(echo $numbered_flags | jq -r '.[]'); do
+          if ! echo $flags | jq -e 'contains([$flag])' > /dev/null; then
             valid=false
             break
           fi

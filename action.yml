@@ -50,18 +50,18 @@ runs:
         repository_name=$(echo $comment_data | jq -r '.data.repository_name')
         bot_token="${{ inputs.bot_token }}"
 
-        # Extract and print flags and numbered flags
-        flags=$(echo '${{ inputs.flags }}' | jq -r '. | keys[]')
-        numbered_flags=$(jq -r '.analysis.numbered_flags | keys[]' data/comment_analysis_result.json)
+        # Extract flags and numbered_flags
+        flags=($(echo '${{ inputs.flags }}' | jq -r '. | keys[]'))
+        numbered_flags=($(jq -r '.analysis.numbered_flags | keys[]' data/comment_analysis_result.json))
 
         echo "Classification: $classification"
-        echo "Flags: $flags"
-        echo "Numbered Flags: $numbered_flags"
+        echo "Flags: ${flags[@]}"
+        echo "Numbered Flags: ${numbered_flags[@]}"
 
         # Verify if numbered flags match the input flags
         valid=true
-        for flag in $numbered_flags; do
-          if ! echo $flags | grep -q $flag; then
+        for nf in "${numbered_flags[@]}"; do
+          if [[ ! " ${flags[@]} " =~ " ${nf} " ]]; then
             valid=false
             break
           fi

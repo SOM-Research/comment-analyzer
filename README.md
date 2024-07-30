@@ -2,11 +2,7 @@
 
 This GitHub Action analyzes comments in issues, pull requests, and discussions, and performs actions in the repository based on the analysis.
 
-## Analyze Comments GitHub Action
-
-This GitHub Action analyzes comments in issues, pull requests, and discussions, and performs actions in the repository based on the analysis.
-
-### Features
+## Features
 
 - Analyzes comments in issues, pull requests, and discussions.
 - Automatically handles comments by posting responses or deleting inappropriate comments.
@@ -14,7 +10,7 @@ This GitHub Action analyzes comments in issues, pull requests, and discussions, 
 - Sends email notifications based on the analysis results.
 - Uses the `BigBOSS-SOM` bot to perform comment actions.
 
-### Inputs
+## Inputs
 
 - `github_token` **(required)**: GitHub token for authentication.
 - `server_url` **(required)**: URL of the analysis server.
@@ -23,46 +19,59 @@ This GitHub Action analyzes comments in issues, pull requests, and discussions, 
 - `email_to` **(required)**: Recipient email address for notifications.
 - `bot_user` **(required)**: GitHub username of the bot.
 - `bot_token` **(required)**: GitHub token of the bot for performing comment actions.
+- `comment_json` **(required)**: Path to the comment JSON file.
+- `flags` **(required)**: Flags from the analysis.
 
-## Usage
+## Example Comment JSON
 
-To use this action in your workflow, include it as a step in your GitHub Actions workflow file. Below is an example configuration:
-
-```yaml
-name: Check Comments
-
-on:
-  issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
-  discussion_comment:
-    types: [created]
-
-jobs:
-  check-comment:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Analyze Comments
-        uses: SOM-Research/comment-analyzer@v1.1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          server_url: ${{ secrets.SERVER_URL }}
-          sendinblue_api_key: ${{ secrets.SENDINBLUE_API_KEY }}
-          email_from: ${{ secrets.EMAIL_FROM }}
-          email_to: ${{ secrets.EMAIL_TO }}
-          bot_user: ${{ secrets.BOT_USER }}
-          bot_token: ${{ secrets.BOT_TOKEN }}
+```json
+{
+  "type": "comment",
+  "data": {
+    "comment_id": "2258055095",
+    "user": "username",
+    "user_id": "user_id",
+    "user_avatar_url": "https://avatars.githubusercontent.com/u/user_id?v=4",
+    "user_html_url": "https://github.com/username",
+    "user_type": "User",
+    "event_type": "issue",
+    "event_number": "4",
+    "event_title": "Sample issue title",
+    "event_body": "Describe the issue or problem you detected",
+    "comment_body": "Sample comment body",
+    "created_at": "2024-07-30T10:49:28Z",
+    "updated_at": "2024-07-30T10:49:28Z",
+    "event_url": "https://github.com/username/repo/issues/4",
+    "comment_url": "https://github.com/username/repo/issues/4#issuecomment-2258055095",
+    "repository_name": "username/repo",
+    "repository_full_name": "",
+    "repository_html_url": ""
+  }
+}
 ```
+ ## Flags
+Flags used for analysis, coming from the code-of-conduct-analyzer:
 
+```json
+{
+  "F1": ["empathy", "kindness"],
+  "F10": ["considered inappropriate", "professional setting", "inappropriate language"],
+  "F2": ["be respectful", "differing viewpoints"],
+  "F3": ["constructive feedback", "gracefully accepting"],
+  "F5": ["best for the community"],
+  "F6": ["sexist"],
+  "F7": ["trolling"],
+  "F8": ["harass", "harassing", "harassment", "threatened", "threats"],
+  "F9": ["private information"]
+}
+```
 ### How It Works
-- **Checkout Repository**: The action checks out the repository to get the latest code and context.
-- **Save Comment Details**: The action saves the details of the comment to a JSON file.
-- **Send for Analysis**: The comment details are sent to an external server for analysis.
-- **Determine Action**: Based on the analysis, the action determines if the comment should be deleted or responded to.
-- **Perform Action**: If required, the BigBOSS-SOM bot will delete the comment or post a positive response.
-- **Send Email Notification**: Sends an email notification with the analysis results.
-
+1. **Checkout Repository**: The action checks out the repository to get the latest code and context.
+2. **Save Comment Details**: The action saves the details of the comment to a JSON file.
+3. **Send for Analysis**: The comment details are sent to an external server for analysis.
+4. **Determine Action**: Based on the analysis, the action determines if the comment should be deleted or responded to.
+5. **Perform Action**: If required, the BigBOSS-SOM bot will delete the comment or post a positive response.
+6. **Send Email Notification**: Sends an email notification with the analysis results.
 
 ## Example Scenario
 - **Positive Comment**: The action will post a predefined positive response.

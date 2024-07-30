@@ -41,74 +41,85 @@ runs:
              -o data/comment_analysis_result.json
         cat data/comment_analysis_result.json
 
-        # Extraer variables del JSON de análisis
         classification=$(jq -r '.analysis.classification' data/comment_analysis_result.json)
         response_comment=$(jq -r '.response_comment' data/comment_analysis_result.json)
-
-        # Extraer variables del JSON del comentario
         comment_data=$(cat ${{ inputs.comment_json }})
         event_type=$(echo $comment_data | jq -r '.data.event_type')
         event_number=$(echo $comment_data | jq -r '.data.event_number')
         comment_id=$(echo $comment_data | jq -r '.data.comment_id')
         repository_name=$(echo $comment_data | jq -r '.data.repository_name')
         bot_token="${{ inputs.bot_token }}"
+        flags="${{ inputs.flags }}"
+        numbered_flags=$(jq -r '.analysis.numbered_flags' data/comment_analysis_result.json | jq 'keys')
 
         echo "Classification: $classification"
+        echo "Flags: $flags"
+        echo "Numbered Flags: $numbered_flags"
 
-        if [ "$classification" == "positive" ]; then
-          if [[ "$event_type" == "issue" ]]; then
-            curl -X POST -H "Authorization: token $bot_token" \
-                 -H "Accept: application/vnd.github.v3+json" \
-                 https://api.github.com/repos/$repository_name/issues/$event_number/comments \
-                 -d '{"body":"'"$response_comment"'"}'
-          elif [[ "$event_type" == "pull_request" ]]; then
-            curl -X POST -H "Authorization: token $bot_token" \
-                 -H "Accept: application/vnd.github.v3+json" \
-                 https://api.github.com/repos/$repository_name/pulls/$event_number/comments \
-                 -d '{"body":"'"$response_comment"'"}'
-          elif [[ "$event_type" == "discussion" ]]; then
-            curl -X POST -H "Authorization: token $bot_token" \
-                 -H "Accept: application/vnd.github.v3+json" \
-                 https://api.github.com/repos/$repository_name/discussions/$event_number/comments \
-                 -d '{"body":"'"$response_comment"'"}'
+        # Verify if numbered flags match the input flags
+        valid=true
+        for flag in $(echo $flags | jq -r 'keys[]'); do
+          if ! echo $numbered_flags | jq -e 'contains([$flag])' > /dev/null; then
+            valid=false
+            break
           fi
-        elif [ "$classification" == "negative" ]; then
-          if [[ "$event_type" == "issue" ]]; then
-            curl -X DELETE -H "Authorization: token $bot_token" \
-                 -H "Accept: application/vnd.github.v3+json" \
-                 https://api.github.com/repos/$repository_name/issues/comments/$comment_id
-          elif [[ "$event_type" == "pull_request" ]]; then
-            curl -X DELETE -H "Authorization: token $bot_token" \
-                 -H "Accept: application/vnd.github.v3+json" \
-                 https://api.github.com/repos/$repository_name/pulls/comments/$comment_id
-          elif [[ "$event_type" == "discussion" ]]; then
-            curl -X DELETE -H "Authorization: token $bot_token" \
-                 -H "Accept: application/vnd.github.v3+json" \
-                 https://api.github.com/repos/$repository_name/discussions/comments/$comment_id
+        done
+
+        if [ "$valid" = true ]; then
+          if [ "$classification" == "positive" ]; then
+            if [[ "$event_type" == "issue" ]]; then
+              curl -X POST -H "Authorization: token $bot_token" \
+                   -H "Accept: application/vnd.github.v3+json" \
+                   https://api.github.com/repos/$repository_name/issues/$event_number/comments \
+                   -d '{"body":"'"$response_comment"'"}'
+            elif [[ "$event_type" == "pull_request" ]]; then
+              curl -X POST -H "Authorization: token $bot_token" \
+                   -H "Accept: application/vnd.github.v3+json" \
+                   https://api.github.com/repos/$repository_name/pulls/$event_number/comments \
+                   -d '{"body":"'"$response_comment"'"}'
+            elif [[ "$event_type" == "discussion" ]]; then
+              curl -X POST -H "Authorization: token $bot_token" \
+                   -H "Accept: application/vnd.github.v3+json" \
+                   https://api.github.com/repos/$repository_name/discussions/$event_number/comments \
+                   -d '{"body":"'"$response_comment"'"}'
+            fi
+          elif [ "$classification" == "negative" ]; then
+            if [[ "$event_type" == "issue" ]]; then
+              curl -X DELETE -H "Authorization: token $bot_token" \
+                   -H "Accept: application/vnd.github.v3+json" \
+                   https://api.github.com/repos/$repository_name/issues/comments/$comment_id
+            elif [[ "$event_type" == "pull_request" ]]; then
+              curl -X DELETE -H "Authorization: token $bot_token" \
+                   -H "Accept: application/vnd.github.v3+json" \
+                   https://api.github.com/repos/$repository_name/pulls/comments/$comment_id
+            elif [[ "$event_type" == "discussion" ]]; then
+              curl -X DELETE -H "Authorization: token $bot_token" \
+                   -H "Accept: application/vnd.github.v3+json" \
+                   https://api.github.com/repos/$repository_name/discussions/comments/$comment_id
+            fi
           fi
+
+          # Send email notification
+          email_body=""
+
+          if [ "$classification" == "positive" ]; then
+            email_body="A positive action was taken. Details: $(cat ${{ inputs.comment_json }})"
+          elif [ "$classification" == "negative" ]; then
+            email_body="A negative action was taken. Details: $(cat ${{ inputs.comment_json }})"
+          fi
+
+          email_json=$(jq -n --arg from_name "GitHub Actions" \
+                            --arg from_email "${{ inputs.email_from }}" \
+                            --arg to_email "${{ inputs.email_to }}" \
+                            --arg subject "GitHub Actions Notification" \
+                            --arg htmlContent "<html><head></head><body><p>${email_body}</p></body></html>" \
+                            '{sender: {name: $from_name, email: $from_email}, to: [{email: $to_email, name: "Recipient"}], subject: $subject, htmlContent: $htmlContent}')
+
+          echo "$email_json" | curl -X POST "https://api.brevo.com/v3/smtp/email" \
+            -H "accept: application/json" \
+            -H "api-key: ${{ inputs.sendinblue_api_key }}" \
+            -H "Content-Type: application/json" \
+            -d @-
+        else
+          echo "Numbered flags do not match the provided flags. No action taken."
         fi
-
-    - name: Send email notification
-      shell: bash
-      run: |
-        classification=$(jq -r '.analysis.classification' data/comment_analysis_result.json)
-        email_body=""
-
-        if [ "$classification" == "positive" ]; then
-          email_body="A positive action was taken. Details: $(cat ${{ inputs.comment_json }})"
-        elif [ "$classification" == "negative" ]; then
-          email_body="A negative action was taken. Details: $(cat ${{ inputs.comment_json }})"
-        fi
-
-        email_json=$(jq -n --arg from_name "GitHub Actions" \
-                          --arg from_email "${{ inputs.email_from }}" \
-                          --arg to_email "${{ inputs.email_to }}" \
-                          --arg subject "GitHub Actions Notification" \
-                          --arg htmlContent "<html><head></head><body><p>${email_body}</p></body></html>" \
-                          '{sender: {name: $from_name, email: $from_email}, to: [{email: $to_email, name: "Recipient"}], subject: $subject, htmlContent: $htmlContent}')
-
-        echo "$email_json" | curl -X POST "https://api.brevo.com/v3/smtp/email" \
-          -H "accept: application/json" \
-          -H "api-key: ${{ inputs.sendinblue_api_key }}" \
-          -H "Content-Type: application/json" \
-          -d @-

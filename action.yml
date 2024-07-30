@@ -51,7 +51,7 @@ runs:
         bot_token="${{ inputs.bot_token }}"
 
         # Extract and print flags and numbered flags
-        flags=$(echo '${{ inputs.flags }}' | jq -r 'keys[]')
+        flags=$(echo '${{ inputs.flags }}' | jq -r '. | keys[]')
         numbered_flags=$(jq -r '.analysis.numbered_flags | keys[]' data/comment_analysis_result.json)
 
         echo "Classification: $classification"
@@ -61,7 +61,7 @@ runs:
         # Verify if numbered flags match the input flags
         valid=true
         for flag in $numbered_flags; do
-          if ! echo $flags | jq -e --arg flag "$flag" 'contains([$flag])' > /dev/null; then
+          if ! echo $flags | grep -q $flag; then
             valid=false
             break
           fi

@@ -8,7 +8,6 @@ This GitHub Action analyzes comments in issues, pull requests, and discussions, 
 - Automatically handles comments by posting responses or deleting inappropriate comments.
 - Integrates with an external analysis server to determine the nature of the comment.
 - Sends email notifications based on the analysis results.
-- Uses the `BigBOSS-SOM` bot to perform comment actions.
 
 ## Inputs
 
@@ -95,5 +94,3 @@ The CC BY-SA license allows users to distribute, remix, adapt, and build upon th
 
 [Creative Commons License](https://creativecommons.org/licenses/by-sa/4.0/)
 
-## Author
-Created by CobosDS. For any issues or contributions, please open an issue or submit a pull request on the [GitHub repository](https://github.com/SOM-Research/comment-analyzer).

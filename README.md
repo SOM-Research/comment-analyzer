@@ -7,7 +7,7 @@ This GitHub Action analyzes comments in issues, pull requests, and discussions, 
 ## Features
 
 - Analyzes comments in issues, pull requests, and discussions.
-- Automatically handles comments by posting responses or deleting inappropriate comments.
+- Automatically handles comments by posting responses or flagging inappropriate comments.
 - Integrates with an external analysis server to determine the nature of the comment.
 - Sends email notifications based on the analysis results.
 

@@ -86,20 +86,9 @@ runs:
                    -d '{"body":"'"$response_comment"'"}'
             fi
           elif [ "$classification" == "negative" ]; then
-            if [[ "$event_type" == "issue" ]]; then
-              curl -X DELETE -H "Authorization: token $bot_token" \
-                   -H "Accept: application/vnd.github.v3+json" \
-                   https://api.github.com/repos/$repository_name/issues/comments/$comment_id
-            elif [[ "$event_type" == "pull_request" ]]; then
-              curl -X DELETE -H "Authorization: token $bot_token" \
-                   -H "Accept: application/vnd.github.v3+json" \
-                   https://api.github.com/repos/$repository_name/pulls/comments/$comment_id
-            elif [[ "$event_type" == "discussion" ]]; then
-              curl -X DELETE -H "Authorization: token $bot_token" \
-                   -H "Accept: application/vnd.github.v3+json" \
-                   https://api.github.com/repos/$repository_name/discussions/comments/$comment_id
-            fi
+            echo "Negative comment detected."
           fi
+
 
           # Send email notification
           email_body=""
@@ -107,13 +96,13 @@ runs:
           if [ "$classification" == "positive" ]; then
             email_body="A positive action was taken. Details: $(cat ${{ inputs.comment_json }})"
           elif [ "$classification" == "negative" ]; then
-            email_body="A negative action was taken. Details: $(cat ${{ inputs.comment_json }})"
+            email_body="The following comment has been flagged as a possible violation of the Code of Conduct. Please review it for further action. Details: $(cat ${{ inputs.comment_json }})"
           fi
 
           email_json=$(jq -n --arg from_name "GitHub Actions" \
                             --arg from_email "${{ inputs.email_from }}" \
                             --arg to_email "${{ inputs.email_to }}" \
-                            --arg subject "GitHub Actions Notification" \
+                            --arg subject "BigBoss Notification" \
                             --arg htmlContent "<html><head></head><body><p>${email_body}</p></body></html>" \
                             '{sender: {name: $from_name, email: $from_email}, to: [{email: $to_email, name: "Recipient"}], subject: $subject, htmlContent: $htmlContent}')
 

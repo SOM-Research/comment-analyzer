@@ -68,7 +68,7 @@ This GitHub Action analyzes comments in issues, pull requests, and discussions, 
 
 ## Example Scenario
 - **Positive Comment**: The action will post a predefined positive response.
-- **Inappropriate Comment**: The action will delete the comment based on the analysis results.
+- **Inappropriate Comment**: he action will flag the comment as a possible violation of the Code of Conduct and notify the repository owner for further review.
 
 ---
 ## Permissions

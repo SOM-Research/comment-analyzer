@@ -1,6 +1,5 @@
 name: 'Comment analyzer'
 description: 'Analyze and handle comments in issues, pull requests, and discussions, and perform actions in the repository based on the analysis'
-author: 'CobosDS'
 inputs:
   github_token:
     description: 'GitHub token'

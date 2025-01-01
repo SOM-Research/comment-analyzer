@@ -2,12 +2,16 @@
 
 This GitHub Action analyzes comments in issues, pull requests, and discussions, and performs actions in the repository based on the analysis.
 
+--- 
+
 ## Features
 
 - Analyzes comments in issues, pull requests, and discussions.
 - Automatically handles comments by posting responses or deleting inappropriate comments.
 - Integrates with an external analysis server to determine the nature of the comment.
 - Sends email notifications based on the analysis results.
+
+---
 
 ## Inputs
 
@@ -20,6 +24,8 @@ This GitHub Action analyzes comments in issues, pull requests, and discussions, 
 - `bot_token` **(required)**: GitHub token of the bot for performing comment actions.
 - `comment_json` **(required)**: Path to the comment JSON file.
 - `flags` **(required)**: Flags from the analysis.
+
+---
 
 ## Example Comment JSON
 
@@ -48,22 +54,8 @@ This GitHub Action analyzes comments in issues, pull requests, and discussions, 
   }
 }
 ```
- ## Flags
-Flags used for analysis, coming from the code-of-conduct-analyzer:
+---
 
-```json
-{
-  "F1": ["empathy", "kindness"],
-  "F10": ["considered inappropriate", "professional setting", "inappropriate language"],
-  "F2": ["be respectful", "differing viewpoints"],
-  "F3": ["constructive feedback", "gracefully accepting"],
-  "F5": ["best for the community"],
-  "F6": ["sexist"],
-  "F7": ["trolling"],
-  "F8": ["harass", "harassing", "harassment", "threatened", "threats"],
-  "F9": ["private information"]
-}
-```
 ### How It Works
 1. **Checkout Repository**: The action checks out the repository to get the latest code and context.
 2. **Save Comment Details**: The action saves the details of the comment to a JSON file.
@@ -72,10 +64,13 @@ Flags used for analysis, coming from the code-of-conduct-analyzer:
 5. **Perform Action**: If required, the BigBOSS-SOM bot will delete the comment or post a positive response.
 6. **Send Email Notification**: Sends an email notification with the analysis results.
 
+---
+
 ## Example Scenario
 - **Positive Comment**: The action will post a predefined positive response.
 - **Inappropriate Comment**: The action will delete the comment based on the analysis results.
 
+---
 ## Permissions
 This action requires the following permissions:
 
@@ -86,6 +81,8 @@ This action requires the following permissions:
 - `actions: read`
 
 Ensure these permissions are set in your workflow.
+
+---
 
 ## License
 This work is licensed under a Creative Commons Attribution-ShareAlike 4.0 International License.

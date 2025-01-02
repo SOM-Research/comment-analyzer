@@ -1,4 +1,4 @@
-# Analyze Comments GitHub Action
+# Comments Analyzer GitHub Action
 
 This GitHub Action analyzes comments in issues, pull requests, and discussions, and performs actions in the repository based on the analysis.
 
